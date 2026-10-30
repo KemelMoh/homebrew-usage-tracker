@@ -10,8 +10,11 @@ on:
         required: false
         type: string
   schedule:
-    # Cada seis horas, por si se pierde alguna notificacion.
-    - cron: "17 */6 * * *"
+    # Cada hora, para que el cask no tarde en recoger una release nueva. El
+    # repositorio principal tambien avisa por repository_dispatch, pero su
+    # token no siempre puede despachar a otro repositorio, asi que esta
+    # comprobacion periodica es la que garantiza que el cask se actualiza.
+    - cron: "17 * * * *"
 
 permissions:
   contents: write
