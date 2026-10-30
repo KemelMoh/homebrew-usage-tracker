@@ -69,6 +69,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # Homebrew 7 ya no permite tapear homebrew/cask sin --force, y
+          # bump-cask-pr lo hace por dentro. Sin esto el comando falla con
+          # "Tap homebrew/cask already tapped".
+          brew tap --force homebrew/cask || true
+
           # La URL lleva la version escrita, no interpolada, para que brew
           # pueda actualizarla al bumpear. El checksum lo descarga y lo
           # comprueba brew.
