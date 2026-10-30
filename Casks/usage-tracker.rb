@@ -1,8 +1,8 @@
 cask "usage-tracker" do
-  version "0.2.3"
-  sha256 "4404c41ef8e98a6cf8c0bf45a62d53a70a0adcf719cad2b5dd70ed5867700385"
+  version "0.2.4"
+  sha256 "60f5b9eb9aca52b0fb9ddc0efd8e650a371de0ef12349b3f092b94275aad9304"
 
-  url "https://github.com/KemelMoh/usage-tracker/releases/download/v0.2.3/UsageTracker-0.2.3.dmg"
+  url "https://github.com/KemelMoh/usage-tracker/releases/download/v0.2.4/UsageTracker-0.2.4.dmg"
   name "Usage Tracker"
   desc "Menu bar usage tracker for OpenCode Go, GitHub Copilot and Claude"
   homepage "https://github.com/KemelMoh/usage-tracker"
