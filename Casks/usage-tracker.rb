@@ -12,6 +12,14 @@ cask "usage-tracker" do
 
   app "Usage Tracker.app"
 
+  postflight_steps do
+    run "/usr/bin/open",
+        args:         ["-a", "{{appdir}}/Usage Tracker.app"],
+        must_succeed: false
+  end
+
+  uninstall quit: "dev.kemel.usagetracker"
+
   caveats <<~EOS
     Usage Tracker está firmada en modo ad-hoc y no está notarizada por Apple.
     Si macOS la bloquea al abrirla, ejecuta:
