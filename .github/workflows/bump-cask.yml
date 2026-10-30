@@ -62,6 +62,19 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          ./scripts/update-cask.sh "$VERSION"
+
+      - name: Comprobar el estilo
+        if: steps.check.outputs.needed == 'true'
+        run: brew style Casks/usage-tracker.rb
+
+      - name: Abrir el pull request
+        if: steps.check.outputs.needed == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
@@ -69,23 +82,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Homebrew 7 ya no permite tapear homebrew/cask sin --force, y
-          # bump-cask-pr lo hace por dentro. Sin esto el comando falla con
-          # "Tap homebrew/cask already tapped".
-          brew tap --force homebrew/cask || true
+          BRANCH="bump/usage-tracker-$VERSION"
+          git checkout -b "$BRANCH"
+          git add Casks/usage-tracker.rb
+          git commit -m "usage-tracker: update to $VERSION"
+          git push origin "$BRANCH"
 
-          # La URL lleva la version escrita, no interpolada, para que brew
-          # pueda actualizarla al bumpear. El checksum lo descarga y lo
-          # comprueba brew.
-          URL="https://github.com/KemelMoh/usage-tracker/releases/download/v${VERSION}/UsageTracker-${VERSION}.dmg"
-
-          # --no-fork trabaja sobre este mismo repositorio, sin bifurcaciones
-          # ni tokens adicionales.
-          brew bump-cask-pr \
-            --no-audit \
-            --no-browse \
-            --no-fork \
-            --version="$VERSION" \
-            --url="$URL" \
-            --message="Actualiza el cask a la version $VERSION." \
-            "KemelMoh/homebrew-usage-tracker/usage-tracker"
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base main \
+            --head "$BRANCH" \
+            --title "usage-tracker: update to $VERSION" \
+            --body "Actualiza el cask a la version $VERSION con el checksum del DMG publicado."
