@@ -30,8 +30,8 @@ brew upgrade --cask usage-tracker
 
 El cask se actualiza solo: cada vez que se publica una release en el
 [repositorio principal](https://github.com/KemelMoh/usage-tracker), un workflow
-de este tap abre un pull request con la versión y el checksum nuevos. El PR se
-revisa y se mezcla.
+de este tap descarga el DMG, calcula su checksum y actualiza el cask con la
+versión nueva.
 
 ## Desinstalar
 

@@ -70,37 +70,23 @@ jobs:
         if: steps.check.outputs.needed == 'true'
         run: brew style Casks/usage-tracker.rb
 
-      - name: Abrir el pull request
+      - name: Publicar el cask actualizado
         if: steps.check.outputs.needed == 'true'
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          BRANCH="bump/usage-tracker-$VERSION"
-          git checkout -b "$BRANCH"
+          # Se publica directo al main en vez de abrir un pull request: el
+          # token de GitHub Actions no puede crear PRs en su propio
+          # repositorio. El cambio es mecanico, solo la version, el checksum
+          # y la URL, y lo revisa `brew style` en el paso anterior.
           git add Casks/usage-tracker.rb
           git commit -m "usage-tracker: update to $VERSION"
-          git push origin "$BRANCH"
+          git push origin main
 
-          # Se usa la API REST y no `gh pr create` porque el token de GitHub
-          # Actions no puede crear pull requests por GraphQL. Con REST si, si
-          # el workflow tiene el permiso pull-requests: write.
-          curl -fsSL -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls" \
-            -d "{
-              \"title\": \"usage-tracker: update to $VERSION\",
-              \"head\": \"$BRANCH\",
-              \"base\": \"main\",
-              \"body\": \"Actualiza el cask a la version $VERSION con el checksum del DMG publicado.\"
-            }" > /dev/null
-
-          echo "Pull request abierto para la $VERSION"
+          echo "Cask publicado en la $VERSION"

@@ -1,0 +1,92 @@
+name: Bump cask
+
+on:
+  repository_dispatch:
+    types: [release-published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión a la que actualizar, por ejemplo 0.2.3"
+        required: false
+        type: string
+  schedule:
+    # Cada seis horas, por si se pierde alguna notificacion.
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    name: Actualiza el cask
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolver version
+        id: version
+        shell: bash
+        env:
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="${DISPATCH_VERSION:-$INPUT_VERSION}"
+          if [[ -z "$VERSION" ]]; then
+            # Sin version indicada se usa la ultima release publicada.
+            VERSION="$(curl -fsSL https://api.github.com/repos/KemelMoh/usage-tracker/releases/latest \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"].lstrip("v"))')"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Comprobar si hay version nueva
+        id: check
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          CURRENT="$(grep -oE 'version "[^"]+"' Casks/usage-tracker.rb | head -1 | cut -d'"' -f2)"
+          echo "actual=$CURRENT" >> "$GITHUB_OUTPUT"
+          if [[ "$CURRENT" == "$VERSION" ]]; then
+            echo "El cask ya esta en $VERSION."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "El cask pasa de $CURRENT a $VERSION."
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Actualizar el cask
+        if: steps.check.outputs.needed == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          ./scripts/update-cask.sh "$VERSION"
+
+      - name: Comprobar el estilo
+        if: steps.check.outputs.needed == 'true'
+        run: brew style Casks/usage-tracker.rb
+
+      - name: Publicar el cask actualizado
+        if: steps.check.outputs.needed == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Se publica directo al main en vez de abrir un pull request: el
+          # token de GitHub Actions no puede crear PRs en su propio
+          # repositorio. El cambio es mecanico, solo la version, el checksum
+          # y la URL, y lo revisa `brew style` en el paso anterior.
+          git add Casks/usage-tracker.rb
+          git commit -m "usage-tracker: update to $VERSION"
+          git push origin main
+
+          echo "Cask publicado en la $VERSION"
