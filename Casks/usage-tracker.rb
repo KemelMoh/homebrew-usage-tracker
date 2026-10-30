@@ -12,6 +12,50 @@ cask "usage-tracker" do
 
   app "Usage Tracker.app"
 
+  # Older install receipts may not contain the `uninstall quit` stanza.
+  # Stop those running processes before Homebrew opens the new app bundle.
+  preflight_steps do
+    run "/usr/bin/osascript",
+        args:         [
+          "-l",
+          "JavaScript",
+          "-e",
+          <<~JAVASCRIPT,
+            ObjC.import("AppKit");
+            ObjC.import("Foundation");
+
+            function matchingApps(bundleID) {
+              var running = $.NSWorkspace.sharedWorkspace.runningApplications;
+              var matches = [];
+
+              for (var index = 0; index < running.count; index++) {
+                var app = running.objectAtIndex(index);
+                if (!app.bundleIdentifier.isNil() && ObjC.unwrap(app.bundleIdentifier) === bundleID) {
+                  matches.push(app);
+                }
+              }
+
+              return matches;
+            }
+
+            function run(argv) {
+              matchingApps(argv[0]).forEach(function (app) { app.terminate(); });
+
+              var deadline = Date.now() + 10000;
+              while (Date.now() < deadline) {
+                if (matchingApps(argv[0]).length === 0) return;
+                $.NSThread.sleepForTimeInterval(0.1);
+              }
+
+              $.exit(1);
+            }
+          JAVASCRIPT
+          "dev.kemel.usagetracker",
+        ],
+        must_succeed: true,
+        print_stderr: false
+  end
+
   postflight_steps do
     run "/usr/bin/open",
         args:         ["-a", "{{appdir}}/Usage Tracker.app"],
